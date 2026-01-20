@@ -41,10 +41,10 @@ supported_distro( )
   fi
 
   case "${ID}" in
-    ubuntu|centos|rhel|fedora|sles|opensuse-leap)
+    ubuntu|centos|rhel|fedora|sles|opensuse-leap|azurelinux)
         true
         ;;
-    *)  printf "This script is currently supported on Ubuntu, SLES, CentOS, RHEL and Fedora\n"
+    *)  printf "This script is currently supported on Ubuntu, SLES, CentOS, RHEL, Fedora and Azure Linux\n"
         exit 2
         ;;
   esac
@@ -167,6 +167,7 @@ install_packages( )
   local library_dependencies_centos_rhel_8=( "epel-release" "make" "gcc-c++" "rpm-build" )
   local library_dependencies_fedora=( "make" "gcc-c++" "libcxx-devel" "rpm-build" )
   local library_dependencies_sles=( "make" "gcc-c++" "libcxxtools9" "rpm-build" )
+  local library_dependencies_azurelinux=( "make" "gcc-c++" "libcxx-devel" "rpm-build" )
 
   if [[ $HIP_PLATFORM == "nvidia" ]]; then
     # Ideally, this could be cuda-cublas-dev, but the package name has a version number in it
@@ -183,6 +184,7 @@ install_packages( )
         library_dependencies_centos_rhel_8+=( "rocblas-devel" )
         library_dependencies_fedora+=( "rocblas-devel" )
         library_dependencies_sles+=( "rocblas-devel" )
+        library_dependencies_azurelinux+=( "rocblas-devel" )
       else
         # Install rocm-specific rocblas package
         library_dependencies_ubuntu+=( "${custom_rocblas}" )
@@ -190,6 +192,7 @@ install_packages( )
         library_dependencies_centos_rhel_8+=( "${custom_rocblas}" )
         library_dependencies_fedora+=( "${custom_rocblas}" )
         library_dependencies_sles+=( "${custom_rocblas}" )
+        library_dependencies_azurelinux+=( "${custom_rocblas}" )
       fi
     fi
 
@@ -213,6 +216,7 @@ install_packages( )
       library_dependencies_centos_rhel_8+=("wget")
       library_dependencies_fedora+=("wget")
       library_dependencies_sles+=("wget")
+      library_dependencies_azurelinux+=("wget")
     fi
   fi
 
@@ -222,6 +226,7 @@ install_packages( )
     library_dependencies_centos_rhel_8+=( "gcc-gfortran" )
     library_dependencies_fedora+=( "gcc-gfortran" )
     library_dependencies_sles+=( "gcc-fortran pkg-config" "dpkg" )
+    library_dependencies_azurelinux+=( "gcc-gfortran" )
   fi
 
   case "${ID}" in
@@ -250,8 +255,14 @@ install_packages( )
 #     elevate_if_not_root zypper -y update
       install_zypper_packages "${library_dependencies_sles[@]}"
       ;;
+
+    azurelinux)
+#     elevate_if_not_root dnf -y update
+      install_dnf_packages "${library_dependencies_azurelinux[@]}"
+      ;;
+
     *)
-      echo "This script is currently supported on Ubuntu, SLES, CentOS, RHEL and Fedora"
+      echo "This script is currently supported on Ubuntu, SLES, CentOS, RHEL, Fedora and Azure Linux"
       exit 2
       ;;
   esac
@@ -283,7 +294,7 @@ install_cuda_package()
       fi
       ;;
 
-    fedora)
+    fedora|azurelinux)
       if [[ "${cuda_version_install}" == "default" ]]; then
         install_dnf_packages "${cuda_dependencies[@]}"
       else
@@ -611,6 +622,9 @@ if [[ "${install_package}" == true ]]; then
     ;;
     sles|opensuse-leap)
       elevate_if_not_root zypper -n --no-gpg-checks install hipblas-*.rpm
+    ;;
+    azurelinux)
+      elevate_if_not_root rpm -ivh --replacefiles hipblas-*.rpm
     ;;
   esac
 
